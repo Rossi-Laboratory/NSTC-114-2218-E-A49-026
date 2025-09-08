@@ -1,16 +1,6 @@
-# DiffuScene
+# Room Plan Diffusion
 
 
-
-- We present DiffuScene, a diffusion model for diverse and realistic indoor scene synthesis.
-<div style="text-align: center">
-<img src="media/pipeline.png" />
-</div
-
-- It can facilitate various down-stream applications: scene completion from partial scenes (left); scene arrangements of given objects (middle); scene generation from a text prompt describing partial scene configurations (right).
-<div style="text-align: center">
-<img src="media/teaser.png"  />
-</div>
 
 ## Installation & Dependencies
 You can create a conda environment called ```diffuscene``` using
@@ -30,18 +20,6 @@ Install ChamferDistancePytorch
 cd ChamferDistancePytorch/chamfer3D
 python setup.py install
 ```
-
-## Download
-
-The pretrained model, results, and preprocess datasets are put into [GoogleDrive](https://drive.google.com/drive/folders/1EhvyNCAWWto6vMt0vXWMKBoSdYR_9pC2?usp=sharing)
-
-### Pretrained models and Results
-The pretrained models of DiffuScene (unconditional, text, scene_rearrangement) can be downloaded from [here](https://drive.google.com/file/d/1pk9AzGcBz_kRfmRzvFNDW5byk4MwbXEm/view?usp=sharing). 
-The pretrained model of ShapeAutoencoder can be downloaded from [here](https://drive.google.com/file/d/1xuFa_Hh6BOZqfaAnlG-W_9mA1gilU6nI/view?usp=sharing).
-The google drive also contains [the results of unconditional generation](https://drive.google.com/file/d/1EJ2VPZvbuKeR-ob1SsiwEC7cAEFDug3i/view?usp=sharing).
-
-#### Preprocessed dataset
-To directly train and evaluate DiffuScene without tedious data preprocessing, we also provide the preprocessed [3D-Front](https://drive.google.com/file/d/1UNSFN0kULyOzUErDPVvkKYbmfzA-4MsG/view?usp=sharing) and [3D-FUTURE](https://drive.google.com/file/d/16fz81Eh6B6pbZNGTMbe0FdfNwIuQicE1/view?usp=sharing)
 
 ## Dataset
 
@@ -122,37 +100,3 @@ To evaluate improved precision and recall, you can run:
 python improved_precision_recall.py $ground_truth_bedrooms_top2down_render_folder $generate_bedrooms_top2down_render_folder  ../config/bedroom_threed_front_splits.csv
 python improved_precision_recall.py $ground_truth_diningrooms_top2down_render_folder $generate_diningrooms_top2down_render_folder  ../config/diningroom_threed_front_splits.csv
 ```
-
-## Relevant Research
-
-Please also check out the following papers that explore similar ideas:
-- LEGO-Net: Learning Regular Rearrangements of Objects in Rooms.[[homepage]](https://ivl.cs.brown.edu/research/lego-net.html)
-- Learning 3D Scene Priors with 2D Supervision. [[homepage]](https://yinyunie.github.io/sceneprior-page/)
-- Sceneformer: Indoor Scene Generation with Transformers. [[homepage]](https://xinpeng-wang.github.io/sceneformer/)
-- ATISS: Autoregressive Transformers for Indoor Scene Synthesis. [[homepage]](https://research.nvidia.com/labs/toronto-ai/ATISS/)
-- Scene Synthesis via Uncertainty-Driven Attribute Synchronization [[pdf]](https://openaccess.thecvf.com/content/ICCV2021/papers/Yang_Scene_Synthesis_via_Uncertainty-Driven_Attribute_Synchronization_ICCV_2021_paper.pdf)
-- Indoor Scene Generation from a Collection of Semantic-Segmented Depth Images [[pdf]](https://openaccess.thecvf.com/content/ICCV2021/papers/Yang_Indoor_Scene_Generation_From_a_Collection_of_Semantic-Segmented_Depth_Images_ICCV_2021_paper.pdf)
-- Fast and Flexible Indoor Scene Synthesis via Deep Convolutional Generative Models [[pdf]](https://arxiv.org/pdf/1811.12463.pdf)
-
-## Citation
-
-If you find DiffuScene useful for your work please cite:
-
-```
-@inproceedings{tang2024diffuscene,
-  title={Diffuscene: Denoising diffusion models for generative indoor scene synthesis},
-  author={Tang, Jiapeng and Nie, Yinyu and Markhasin, Lev and Dai, Angela and Thies, Justus and Nie{\ss}ner, Matthias},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
-  year={2024}
-}
-```
-
-Contact [Jiapeng Tang](mailto:tangjiapengtjp@gmail.com) for questions, comments and reporting bugs.
-
-
-## Acknowledgements
-
-Most of the code is borrowed from [ATISS](https://github.com/nv-tlabs/ATISS). We thank for Despoina Paschalidou her great works and repos.
-
-
-
