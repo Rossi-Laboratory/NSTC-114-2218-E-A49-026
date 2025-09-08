@@ -3,10 +3,10 @@
 
 
 ## Installation & Dependencies
-You can create a conda environment called ```diffuscene``` using
+You can create a conda environment called ```RoomPlanDiffusion``` using
 ```
 conda env create -f environment.yaml
-conda activate diffuscene
+conda activate RoomPlanDiffusion
 ```
 
 Next compile the extension modules. You can do this via
@@ -72,8 +72,8 @@ Finally, you can run `preprocessing_data.py` to read and pickle object propertie
 PATH_TO_SCENES="/cluster/balrog/jtang/3d_front_processed/threed_front.pkl" python preprocess_data.py /cluster/balrog/jtang/3d_front_processed/livingrooms_objfeats_32_64 /cluster/balrog/jtang/3D-FRONT/ /cluster/balrog/jtang/3D-FUTURE-model /cluster/balrog/jtang/3D-FUTURE-model/model_info.json --dataset_filtering threed_front_livingroom --annotation_file ../config/livingroom_threed_front_splits.csv --add_objfeats
 ```
 
-## Training & Evaluate Diffuscene
-To train diffuscene on 3D Front-bedrooms, you can run 
+## Training & Evaluate Room Plan Diffusion
+To train Room Plan Diffusion on 3D Front-bedrooms, you can run 
 ```
 ./run/train.sh
 ./run/train_text.sh
@@ -100,3 +100,4 @@ To evaluate improved precision and recall, you can run:
 python improved_precision_recall.py $ground_truth_bedrooms_top2down_render_folder $generate_bedrooms_top2down_render_folder  ../config/bedroom_threed_front_splits.csv
 python improved_precision_recall.py $ground_truth_diningrooms_top2down_render_folder $generate_diningrooms_top2down_render_folder  ../config/diningroom_threed_front_splits.csv
 ```
+
