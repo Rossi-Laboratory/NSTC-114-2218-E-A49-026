@@ -6,6 +6,22 @@ Project ID: **NSTC-114-2218-E-A49-026/**
 This repository contains the official implementation of **Room Plan Diffusion**, a diffusion-based framework for generating structured **indoor room layouts with furniture arrangements**. The project is part of the NSTC research program and aims to advance **Generative AI for 3D indoor scene synthesis**, enabling applications in **room planning, furniture layout generation, and text-conditioned scene design**.
 
 ---
+
+## 🏠 Introduction
+
+**Room Plan Diffusion: Generating Indoor Furniture Layouts** is a diffusion-based generative framework dedicated to **indoor scene synthesis and furniture arrangement**. This project is part of the **National Science and Technology Council (NSTC) research program (NSTC-114-2218-E-A49-026/)**. By leveraging large-scale 3D datasets such as **3D-FRONT** and **3D-FUTURE**, along with **semantic-guided generation techniques**, the system is able to synthesize structured indoor layouts from either random initialization or natural language prompts.
+
+We have successfully developed a **Text-Guided Denoising Pipeline**, which achieves **96% accuracy across 50 test cases**. This demonstrates the ability of Room Plan Diffusion to effectively align **textual descriptions with 3D spatial layouts**, producing realistic and semantically consistent room plans.
+
+Key features of the project include:
+
+* **Unconditional Scene Generation**: Generate complete room layouts from random seeds.
+* **Text-Conditioned Generation**: Synthesize indoor scenes guided by natural language descriptions.
+* **Shape Autoencoder & Latent Codes**: Learn compact shape representations for furniture modeling and integration.
+* **Evaluation Metrics**: Comprehensive assessment using FID, KID, IoU, symmetry measures, and precision/recall.
+
+The system paves the way for applications in **interior design automation, furniture layout optimization, AR/VR scene creation, and robotic simulation environments**, providing a foundation for cross-domain research at the intersection of **Generative AI and 3D scene modeling**.
+
 ## 🔬 Latest Progress
 
 We have successfully implemented the **Text-Guided Denoising Pipeline** for **Room Plan Diffusion**, enabling controllable scene synthesis from natural language descriptions.
@@ -140,4 +156,5 @@ If you use this code in your research, please cite the NSTC project:
   note      = {NSTC Project ID: NSTC-114-2218-E-A49-026/}
 }
 ```
+
 
