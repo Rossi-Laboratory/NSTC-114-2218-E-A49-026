@@ -1,4 +1,4 @@
-name: diffuscene
+name: RoomPlanDiffusion
 channels:
   - conda-forge
   - pytorch
@@ -33,3 +33,4 @@ dependencies:
     - torchtext
     - seaborn
     - wandb
+
