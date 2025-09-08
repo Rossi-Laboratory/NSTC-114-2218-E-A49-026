@@ -1,10 +1,6 @@
 # DiffuScene
 
-[**Paper**](https://arxiv.org/abs/2303.14207.pdf) | [**arXiv**](https://arxiv.org/abs/2303.14207.pdf)  | [**Video**](https://www.youtube.com/embed/PFi-03T1lN0) | [**Project Page**](https://tangjiapeng.github.io/projects/DiffuScene/) <br>
 
-This is the repository that contains source code for the paper:
-
-**DiffuScene: Denoising Diffusion Models for Generative Indoor Scene Synthesis**
 
 - We present DiffuScene, a diffusion model for diverse and realistic indoor scene synthesis.
 <div style="text-align: center">
@@ -157,5 +153,6 @@ Contact [Jiapeng Tang](mailto:tangjiapengtjp@gmail.com) for questions, comments 
 ## Acknowledgements
 
 Most of the code is borrowed from [ATISS](https://github.com/nv-tlabs/ATISS). We thank for Despoina Paschalidou her great works and repos.
+
 
 
