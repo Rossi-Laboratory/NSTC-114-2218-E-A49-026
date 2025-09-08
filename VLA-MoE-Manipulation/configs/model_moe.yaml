@@ -1,0 +1,26 @@
+d_model: 256
+n_latent: 8
+n_heads: 4
+
+# Vision
+vision:
+  in_channels: 3
+  base_channels: 32
+
+# Language
+language:
+  vocab_size: 512
+  max_len: 16
+  emb_dim: 128
+
+# Proprio & Tactile
+proprio_dim: 7
+tactile_dim: 4
+
+# MoE
+experts:
+  names: ["grasping", "placement", "tooluse", "tactile"]
+  k_active: 2
+
+# Action
+action_dim: 7

@@ -1,0 +1,13 @@
+device: "cpu"
+checkpoint_path: "outputs/checkpoints/latest.pt"
+
+dataset:
+  image_size: 128
+  vocab_size: 512
+  max_text_len: 16
+  proprio_dim: 7
+  tactile_dim: 4
+  action_dim: 7
+
+model:
+  config: "configs/model_moe.yaml"
