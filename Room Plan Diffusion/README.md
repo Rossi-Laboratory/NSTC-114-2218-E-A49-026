@@ -7,6 +7,21 @@ This repository contains the official implementation of **Room Plan Diffusion**,
 
 ---
 
+## 📌 Project Deliverables
+
+This repository is part of the official deliverables for the **NSTC Project (NSTC-114-2218-E-A49-026/)**. The following items are included:
+
+| Category             | Deliverable Description                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| **Source Code**      | Implementation of **Room Plan Diffusion**, including training and generation pipelines. |
+| **Preprocessing**    | Scripts for dataset preparation, pickling, and latent shape code extraction.            |
+| **Trained Models**   | Pre-trained **autoencoder** and **diffusion model checkpoints** for room layout tasks.  |
+| **Evaluation Tools** | Scripts to compute **FID, KID, IoU, symmetry metrics, precision & recall**.             |
+| **Demo Materials**   | Example outputs of **unconditional** and **text-conditioned** indoor scene generation.  |
+| **Documentation**    | Project README, configuration files, and reproducibility notes.                         |
+
+
+
 ## 📦 Installation & Dependencies
 
 Create a conda environment:
@@ -131,3 +146,4 @@ If you use this code in your research, please cite the NSTC project:
   note      = {NSTC Project ID: NSTC-114-2218-E-A49-026/}
 }
 ```
+
