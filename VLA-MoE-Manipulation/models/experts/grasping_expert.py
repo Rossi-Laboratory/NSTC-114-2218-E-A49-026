@@ -1,38 +1,27 @@
-# models/experts/placement_expert.py
+# models/experts/grasping_expert.py
 """
-PlacementExpert (enhanced)
---------------------------
-Expert head specialized for precise placement / stacking.
+GraspingExpert (enhanced)
+-------------------------
+Expert head specialized for grasping objects.
 
-Design highlights
-- Residual MLP trunk with:
-  * LayerNorm + GELU
-  * LayerScale (stabilizes deep residuals)
-  * DropPath (stochastic depth) for regularization
-  * Squeeze-Excitation (SE) gating to emphasize placement-relevant channels
-- Multi-head predictions:
-  * Translation (dx, dy, dz)
-  * Rotation   (droll, dpitch, dyaw)
-  * Gripper    (open/close)
-  * Stability  (in [min_stability, 1]) to softly scale the whole action
-- Physical constraints:
-  * Per-axis max translation (meters)
-  * Per-axis max rotation   (radians)
-  * Optional gravity bias to favor gentle downward dz during placement
-- Output range:
-  * Translation ∈ [-max_trans[i], +max_trans[i]]
-  * Rotation    ∈ [-max_rot[i],   +max_rot[i]]
-  * Gripper     ∈ [-1, +1]
+Design
+- Residual MLP trunk with LayerScale, DropPath, and SE gating.
+- Multi-head outputs:
+  * Translation (dx, dy, dz)  -> bounded by max_trans
+  * Rotation    (droll, dpitch, dyaw) -> bounded by max_rot
+  * Gripper     (open/close) in [-1,1]
+- Additional modulation:
+  * Force scale (grip strength) in [min_force, 1]
+  * Optional approach bias toward -z (downward) to stabilize approach
+- Output order: [dx, dy, dz, droll, dpitch, dyaw, gripper]
 
-Input:
-    x: torch.Tensor, shape [B, D] (fused latent)
-
-Output:
-    action: torch.Tensor, shape [B, action_dim]
-            concatenated as [dx, dy, dz, droll, dpitch, dyaw, gripper, ...pad]
+Input
+    x: [B, D] fused latent features
+Output
+    action: [B, action_dim] (>=7)
 """
 
-from typing import Iterable, Optional, Tuple
+from typing import Tuple
 import torch
 import torch.nn as nn
 
@@ -41,7 +30,7 @@ import torch.nn as nn
 # Building blocks
 # ---------------------------
 class DropPath(nn.Module):
-    """Stochastic depth as in timm; no-op at eval."""
+    """Stochastic depth; identity during eval."""
     def __init__(self, drop_prob: float = 0.0):
         super().__init__()
         self.drop_prob = float(drop_prob)
@@ -49,19 +38,15 @@ class DropPath(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.drop_prob == 0.0 or not self.training:
             return x
-        keep_prob = 1.0 - self.drop_prob
-        # work with (B, ...) shape
+        keep = 1.0 - self.drop_prob
         shape = (x.shape[0],) + (1,) * (x.ndim - 1)
-        random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
-        random_tensor.floor_()  # binarize
-        return x.div(keep_prob) * random_tensor
+        mask = keep + torch.rand(shape, dtype=x.dtype, device=x.device)
+        mask.floor_()
+        return x.div(keep) * mask
 
 
 class ResidualMLPBlock(nn.Module):
-    """
-    Residual MLP with LayerScale, DropPath, SE gating.
-    y = x + DropPath( LayerScale( SE( MLP(LN(x)) )))
-    """
+    """Residual MLP with LayerNorm, GELU, SE gating, LayerScale, and DropPath."""
     def __init__(
         self,
         d_model: int,
@@ -77,8 +62,8 @@ class ResidualMLPBlock(nn.Module):
         self.fc1 = nn.Linear(d_model, hidden)
         self.act = nn.GELU()
         self.fc2 = nn.Linear(hidden, d_model)
+        self.dropout = nn.Dropout(drop) if drop > 0 else nn.Identity()
 
-        # Squeeze-Excitation over channel dim
         self.se = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, max(1, d_model // se_reduction)),
@@ -87,19 +72,14 @@ class ResidualMLPBlock(nn.Module):
             nn.Sigmoid(),
         )
 
-        self.dropout = nn.Dropout(drop) if drop > 0 else nn.Identity()
-        self.droppath = DropPath(drop_path) if drop_path > 0 else nn.Identity()
-        # LayerScale: learnable per-channel scaling of the residual branch
         self.gamma = nn.Parameter(layerscale_init * torch.ones(d_model))
+        self.droppath = DropPath(drop_path) if drop_path > 0 else nn.Identity()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.norm(x)
         h = self.fc2(self.act(self.fc1(h)))
         h = self.dropout(h)
-        # SE gating
-        gate = self.se(h)
-        h = h * gate
-        # LayerScale + DropPath
+        h = h * self.se(h)
         h = self.droppath(self.gamma * h)
         return x + h
 
@@ -107,21 +87,20 @@ class ResidualMLPBlock(nn.Module):
 # ---------------------------
 # Expert head
 # ---------------------------
-class PlacementExpert(nn.Module):
+class GraspingExpert(nn.Module):
     """
     Args:
-        d_model: feature dimension of input x.
-        action_dim: total action dimension (>= 7).
-        depth: number of residual blocks.
-        hidden_mult: expansion in residual MLP.
-        dropout: dropout inside MLP.
-        drop_path: stochastic depth probability.
-        min_stability: lower bound for stability scaling (0 < s <= 1).
-        max_trans: per-axis max translation (meters), tuple of 3 floats.
-        max_rot: per-axis max rotation (radians),   tuple of 3 floats.
-        gravity_bias: non-negative small bias (meters) subtracted from dz to
-                      gently encourage downward motion during placement.
-        temperature: global multiplier for action magnitude (post-squash).
+        d_model: latent feature dim
+        action_dim: >=7
+        depth: trunk depth
+        hidden_mult: MLP expansion
+        dropout: dropout prob
+        drop_path: stochastic depth prob
+        max_trans: per-axis max translation (m)
+        max_rot: per-axis max rotation (rad)
+        min_force: min gripper force scale
+        approach_bias: bias added to dz (negative means downward approach)
+        temperature: global multiplier
     """
     def __init__(
         self,
@@ -131,67 +110,51 @@ class PlacementExpert(nn.Module):
         hidden_mult: int = 4,
         dropout: float = 0.0,
         drop_path: float = 0.1,
-        min_stability: float = 0.5,
-        max_trans: Tuple[float, float, float] = (0.05, 0.05, 0.05),  # 5 cm
-        max_rot: Tuple[float, float, float] = (0.25, 0.25, 0.25),    # ~14 deg
-        gravity_bias: float = 0.0,
+        max_trans: Tuple[float, float, float] = (0.05, 0.05, 0.08),  # up to 8 cm in z
+        max_rot: Tuple[float, float, float] = (0.3, 0.3, 0.3),       # ~17 deg
+        min_force: float = 0.3,
+        approach_bias: float = -0.01,
         temperature: float = 1.0,
     ):
         super().__init__()
-        assert action_dim >= 7, "PlacementExpert expects action_dim >= 7."
+        assert action_dim >= 7, "GraspingExpert expects action_dim >= 7."
         self.action_dim = action_dim
-        self.min_stability = float(min_stability)
+
+        self.register_buffer("max_trans", torch.tensor(max_trans, dtype=torch.float32))
+        self.register_buffer("max_rot",   torch.tensor(max_rot,   dtype=torch.float32))
+
+        self.min_force = float(min_force)
+        self.approach_bias = float(approach_bias)
         self.temperature = float(temperature)
 
-        # Save physical limits as buffers (non-trainable, on the right device)
-        self.register_buffer("max_trans", torch.tensor(max_trans, dtype=torch.float32))
-        self.register_buffer("max_rot", torch.tensor(max_rot, dtype=torch.float32))
-        self.gravity_bias = float(gravity_bias)
-
-        # A small learned task token biases features toward placement semantics
+        # task token
         self.task_token = nn.Parameter(torch.randn(1, d_model) * 0.02)
 
-        # Trunk
+        # trunk
         blocks = []
         for i in range(depth):
-            # Linearly decay drop_path across depth for better stability
             dp = drop_path * float(i) / max(1, depth - 1)
             blocks.append(
-                ResidualMLPBlock(
-                    d_model=d_model,
-                    hidden_mult=hidden_mult,
-                    drop=dropout,
-                    drop_path=dp,
-                    layerscale_init=1e-3,
-                    se_reduction=4,
-                )
+                ResidualMLPBlock(d_model, hidden_mult, dropout, dp)
             )
         self.trunk = nn.Sequential(*blocks)
 
-        # Heads
+        # heads
         self.head_trans = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
-            nn.Linear(d_model, 3),
+            nn.LayerNorm(d_model), nn.Linear(d_model, d_model),
+            nn.GELU(), nn.Linear(d_model, 3),
         )
         self.head_rot = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
-            nn.Linear(d_model, 3),
+            nn.LayerNorm(d_model), nn.Linear(d_model, d_model),
+            nn.GELU(), nn.Linear(d_model, 3),
         )
         self.head_grip = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model // 2),
-            nn.GELU(),
-            nn.Linear(d_model // 2, 1),
+            nn.LayerNorm(d_model), nn.Linear(d_model, d_model // 2),
+            nn.GELU(), nn.Linear(d_model // 2, 1),
         )
-        self.head_stability = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, d_model // 2),
-            nn.GELU(),
-            nn.Linear(d_model // 2, 1),
+        self.head_force = nn.Sequential(
+            nn.LayerNorm(d_model), nn.Linear(d_model, d_model // 2),
+            nn.GELU(), nn.Linear(d_model // 2, 1),
             nn.Sigmoid(),  # [0,1]
         )
 
@@ -204,67 +167,40 @@ class PlacementExpert(nn.Module):
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
 
+    # squashers
     def _squash_translation(self, t_raw: torch.Tensor) -> torch.Tensor:
-        """
-        Map unconstrained logits to bounded translations:
-        tanh -> [-1,1] then scale by per-axis max_trans (meters).
-        """
-        t = torch.tanh(t_raw) * self.max_trans  # [B, 3]
-        # gravity bias: gently encourage negative dz during placement
-        if self.gravity_bias > 0:
-            t = t.clone()
-            t[:, 2] = t[:, 2] - self.gravity_bias
-            # keep within bounds after bias
-            t[:, 2] = torch.clamp(t[:, 2], -self.max_trans[2], self.max_trans[2])
-        return t
+        return torch.tanh(t_raw) * self.max_trans
 
     def _squash_rotation(self, r_raw: torch.Tensor) -> torch.Tensor:
-        """
-        Map logits to bounded euler deltas:
-        tanh -> [-1,1] then scale by per-axis max_rot (radians).
-        """
-        r = torch.tanh(r_raw) * self.max_rot  # [B, 3]
-        return r
+        return torch.tanh(r_raw) * self.max_rot
 
     def _squash_gripper(self, g_raw: torch.Tensor) -> torch.Tensor:
-        """
-        Map logits to [-1, 1] via symmetric sigmoid (2*sigmoid - 1).
-        Use tanh-equivalent but with potentially different gradients.
-        """
-        g = 2.0 * torch.sigmoid(g_raw) - 1.0  # [B, 1]
-        return g
+        return 2.0 * torch.sigmoid(g_raw) - 1.0
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            x: [B, D] fused latent features
-
-        Returns:
-            action: [B, action_dim] concatenated as
-                    [dx, dy, dz, droll, dpitch, dyaw, gripper, ...zeros]
-        """
         B, D = x.shape
         h = x + self.task_token.expand(B, -1)
         h = self.trunk(h)
 
-        # Heads
-        t_raw = self.head_trans(h)     # [B, 3]
-        r_raw = self.head_rot(h)       # [B, 3]
-        g_raw = self.head_grip(h)      # [B, 1]
-        s = self.head_stability(h)     # [B, 1] in [0,1]
-        s = self.min_stability + (1.0 - self.min_stability) * s  # [min, 1]
+        # base predictions
+        t = self._squash_translation(self.head_trans(h))
+        r = self._squash_rotation(self.head_rot(h))
+        g = self._squash_gripper(self.head_grip(h))
 
-        # Squash to physical ranges
-        t = self._squash_translation(t_raw)        # meters
-        r = self._squash_rotation(r_raw)           # radians
-        g = self._squash_gripper(g_raw)            # [-1, 1]
+        # apply approach bias on dz
+        t = t.clone()
+        t[:, 2:3] = t[:, 2:3] + self.approach_bias
+        t[:, 2:3] = torch.clamp(t[:, 2:3], -self.max_trans[2], self.max_trans[2])
 
-        base = torch.cat([t, r, g], dim=-1)        # [B, 7]
-        # Stability scaling + temperature
-        out = base * s * self.temperature
+        # force modulation
+        f = self.head_force(h)  # [0,1]
+        f = self.min_force + (1.0 - self.min_force) * f
+        g = g * f  # modulate gripper output
 
-        # If action_dim > 7, pad with zeros (keep interface generic)
+        out7 = torch.cat([t, r, g], dim=-1) * self.temperature
+
+        # pad if action_dim > 7
         if self.action_dim > 7:
             pad = torch.zeros(B, self.action_dim - 7, device=x.device, dtype=x.dtype)
-            out = torch.cat([out, pad], dim=-1)
-        return out
+            out7 = torch.cat([out7, pad], dim=-1)
+        return out7
