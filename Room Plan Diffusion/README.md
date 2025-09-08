@@ -1,103 +1,133 @@
-# Room Plan Diffusion
+# Room Plan Diffusion: Generating Indoor Furniture Layouts
 
+**National Science and Technology Council (NSTC) Project**
+Project ID: **NSTC-114-2218-E-A49-026/**
 
+This repository contains the official implementation of **Room Plan Diffusion**, a diffusion-based framework for generating structured **indoor room layouts with furniture arrangements**. The project is part of the NSTC research program and aims to advance **Generative AI for 3D indoor scene synthesis**, enabling applications in **room planning, furniture layout generation, and text-conditioned scene design**.
 
-## Installation & Dependencies
-You can create a conda environment called ```RoomPlanDiffusion``` using
-```
+---
+
+## 📦 Installation & Dependencies
+
+Create a conda environment:
+
+```bash
 conda env create -f environment.yaml
 conda activate RoomPlanDiffusion
 ```
 
-Next compile the extension modules. You can do this via
-```
+Compile extension modules:
+
+```bash
 python setup.py build_ext --inplace
 pip install -e .
 ```
 
-Install ChamferDistancePytorch
-```
+Install **ChamferDistancePytorch**:
+
+```bash
 cd ChamferDistancePytorch/chamfer3D
 python setup.py install
 ```
 
-## Dataset
+---
 
-The training and evaluation are based on the [3D-FRONT](https://tianchi.aliyun.com/specials/promotion/alibaba-3d-scene-dataset)
-and the [3D-FUTURE](https://www.google.com/search?q=3d-future&oq=3d-fut&aqs=chrome.1.69i57j0j0i30l8.3909j0j7&sourceid=chrome&ie=UTF-8)
-dataset. To download both datasets, please refer to the instructions provided in the dataset's
-[webpage](https://tianchi.aliyun.com/specials/promotion/alibaba-3d-scene-dataset).
+## 📂 Dataset
 
+We train and evaluate our model using:
 
-### Pickle the 3D-FUTURE dataset
-To accelerate the preprocessing speed, we can sepcify the `PATH_TO_SCENES` environment variable for all scripts. This filepath contains the
-parsed `ThreedFutureDataset` after being pickled. To pickle it, you can simply run this script as follows:
-```
+* [**3D-FRONT**](https://tianchi.aliyun.com/specials/promotion/alibaba-3d-scene-dataset)
+* [**3D-FUTURE**](https://tianchi.aliyun.com/specials/promotion/alibaba-3d-scene-dataset)
+
+Please follow the official instructions to download the datasets.
+
+### 🔧 Preprocessing
+
+**1. Pickle the 3D-FUTURE dataset:**
+
+```bash
 python pickle_threed_future_dataset.py path_to_output_dir path_to_3d_front_dataset_dir path_to_3d_future_dataset_dir path_to_3d_future_model_info --dataset_filtering room_type
-``` 
-Based on the pickled ThreedFutureDataset, we also provide a script to pickle the sampled point clouds of object CAD models, 
-which are used to shape autoencoder training and latent shape code extraction.
 ```
+
+**2. Pickle CAD point clouds:**
+
+```bash
 python pickle_threed_future_pointcloud.py path_to_output_dir path_to_3d_front_dataset_dir path_to_3d_future_dataset_dir path_to_3d_future_model_info --dataset_filtering room_type
-``` 
-For example,
-```
-python pickle_threed_future_dataset.py  /cluster/balrog/jtang/3d_front_processed/ /cluster/balrog/jtang/3D-FRONT/ /cluster/balrog/jtang/3D-FUTURE-model /cluster/balrog/jtang/3D-FUTURE-model/model_info.json  --dataset_filtering threed_front_livingroom --annotation_file ../config/livingroom_threed_front_splits.csv
-
-PATH_TO_SCENES="/cluster/balrog/jtang/3d_front_processed/threed_front.pkl" python pickle_threed_fucture_pointcloud.py /cluster/balrog/jtang/3d_front_processed/ /cluster/balrog/jtang/3D-FRONT/ /cluster/balrog/jtang/3D-FUTURE-model /cluster/balrog/jtang/3D-FUTURE-model/model_info.json  --dataset_filtering threed_front_livingroom --annotation_file ../config/livingroom_threed_front_splits.csv
 ```
 
-Note that these two scripts should be separately executed for different room
-types containing different objects. For the case of 3D-FRONT this is for the
-bedrooms and the living/dining rooms, thus you have to run this script twice
-with different `--dataset_filtering` and `--annotation_file`options. Please check the help menu for
-additional details.
+**3. Train shape autoencoder:**
 
-### Train shape autoencoder
-Then you can train the shape autoencoder using all models from bedrooms/diningrooms/livingrooms.
-```
+```bash
 cd ./scripts
-PATH_TO_SCENES="/cluster/balrog/jtang/3d_front_processed/threed_front.pkl" python train_objautoencoder.py ../config/obj_autoencoder/bed_living_diningrooms_lat32.yaml your_objae_output_directory --experiment_tag  "bed_living_diningrooms_lat32" --with_wandb_logger
+PATH_TO_SCENES=".../threed_front.pkl" python train_objautoencoder.py ../config/obj_autoencoder/bed_living_diningrooms_lat32.yaml output_dir --experiment_tag "bed_living_diningrooms_lat32" --with_wandb_logger
 ```
 
-### Pickle Latent Shape Code
-Next, you can use the pre-train checkpoint of shape autoencoder to extract latent shape codes for each room type. Take the bedrooms for example:
-```
-PATH_TO_SCENES="/cluster/balrog/jtang/3d_front_processed/threed_front.pkl" python generate_objautoencoder.py ../config/objautoencoder/bedrooms.yaml your_objae_output_directory --experiment_tag "bed_living_diningrooms_lat32"
+**4. Extract latent shape codes:**
+
+```bash
+PATH_TO_SCENES=".../threed_front.pkl" python generate_objautoencoder.py ../config/objautoencoder/bedrooms.yaml output_dir --experiment_tag "bed_living_diningrooms_lat32"
 ```
 
-### Preprocess 3D-Front dataset with latent shape codes
-Finally, you can run `preprocessing_data.py` to read and pickle object properties (class label, location, orientation, size, and latent shape features) of each scene.
-```
-PATH_TO_SCENES="/cluster/balrog/jtang/3d_front_processed/threed_front.pkl" python preprocess_data.py /cluster/balrog/jtang/3d_front_processed/livingrooms_objfeats_32_64 /cluster/balrog/jtang/3D-FRONT/ /cluster/balrog/jtang/3D-FUTURE-model /cluster/balrog/jtang/3D-FUTURE-model/model_info.json --dataset_filtering threed_front_livingroom --annotation_file ../config/livingroom_threed_front_splits.csv --add_objfeats
+**5. Preprocess with latent shape codes:**
+
+```bash
+PATH_TO_SCENES=".../threed_front.pkl" python preprocess_data.py output_dir /path/to/3D-FRONT /path/to/3D-FUTURE-model /path/to/3D-FUTURE-model/model_info.json --dataset_filtering threed_front_livingroom --annotation_file ../config/livingroom_threed_front_splits.csv --add_objfeats
 ```
 
-## Training & Evaluate Room Plan Diffusion
-To train Room Plan Diffusion on 3D Front-bedrooms, you can run 
-```
+Note: Execute preprocessing separately for **bedrooms** and **living/dining rooms**.
+
+---
+
+## 🚀 Training & Generation
+
+**Train Room Plan Diffusion:**
+
+```bash
 ./run/train.sh
 ./run/train_text.sh
 ```
 
-To generate the scene of unconditional and text-conditioned scene generation with our pretraiened models, you can run 
-```
+**Generate indoor scenes:**
+
+```bash
 ./run/generate.sh
 ./run/generate_text.sh
 ```
-If you want to calculate evaluation metrics of bbox IoU and average number of symmetric pairs, you can add the option```--compute_intersec```.
-Please note that our current text-conditioned model is used to generate a full scene configuration from a text prompt of partial scene (2-3 sentences).
-If you want to evaluate our method with text prompts of more sentences, you might need to re-train our method.
 
-## Evaluation Metrics
-To evaluate FID and KID from rendered 2D images of generated and reference scenes, you can run:
-```
-python compute_fid_scores.py $ground_truth_bedrooms_top2down_render_folder $generate_bedrooms_top2down_render_folder  ../config/bedroom_threed_front_splits.csv
-python compute_fid_scores.py $ground_truth_diningrooms_top2down_render_folder $generate_diningrooms_top2down_render_folder  ../config/diningroom_threed_front_splits.csv
+Options:
+
+* Add `--compute_intersec` to compute bbox IoU and symmetry metrics.
+* Text-conditioned models assume **2–3 sentence prompts**; for longer prompts, re-training is recommended.
+
+---
+
+## 📊 Evaluation
+
+**FID & KID (from 2D rendered images):**
+
+```bash
+python compute_fid_scores.py $ground_truth_bedrooms $generated_bedrooms ../config/bedroom_threed_front_splits.csv
+python compute_fid_scores.py $ground_truth_diningrooms $generated_diningrooms ../config/diningroom_threed_front_splits.csv
 ```
 
-To evaluate improved precision and recall, you can run:
-```
-python improved_precision_recall.py $ground_truth_bedrooms_top2down_render_folder $generate_bedrooms_top2down_render_folder  ../config/bedroom_threed_front_splits.csv
-python improved_precision_recall.py $ground_truth_diningrooms_top2down_render_folder $generate_diningrooms_top2down_render_folder  ../config/diningroom_threed_front_splits.csv
+**Improved Precision & Recall:**
+
+```bash
+python improved_precision_recall.py $ground_truth_bedrooms $generated_bedrooms ../config/bedroom_threed_front_splits.csv
+python improved_precision_recall.py $ground_truth_diningrooms $generated_diningrooms ../config/diningroom_threed_front_splits.csv
 ```
 
+---
+
+## 📑 Citation
+
+If you use this code in your research, please cite the NSTC project:
+
+```
+@misc{RoomPlanDiffusion2025,
+  title     = {Room Plan Diffusion: Generating Indoor Furniture Layouts},
+  author    = {Yuan-Fu Yang and Jun-Teng Chen},
+  year      = {2025},
+  note      = {NSTC Project ID: NSTC-114-2218-E-A49-026/}
+}
+```
