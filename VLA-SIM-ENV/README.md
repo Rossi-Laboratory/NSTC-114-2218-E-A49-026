@@ -1,4 +1,4 @@
-# vla-sim-env
+# VLA Simulation Environment
 
 High-fidelity simulation environment for **Vision-Language-Action (VLA)** and robotic testing using **NVIDIA Omniverse** and **Genesis** platforms.  
 This repository implements environment initialization, multi-scene generation, and multi-object interaction to enable simulation-based robotic AI research.
