@@ -1,10 +1,7 @@
 # NSTC-114-2218-E-A49-026 Research Repository
 
 This repository hosts the implementation, datasets, and related codebases for the research project:
-
-**Toward Scalable Physical AI: A Real-to-Sim-to-Real Framework for 3D Reconstruction, 4D Perception, Simulation Modeling, and Policy Reasoning**  
-**National Science and Technology Council (NSTC), Taiwan**  
-**Project ID: NSTC-114-2218-E-A49-026/**
+**Generative AI for Cross-Domain Robotic Application**   
 
 ---
 
