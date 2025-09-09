@@ -1,0 +1,3 @@
+paths:
+  train: data/processed/train_sequences.pt
+  val:   data/processed/train_sequences.pt

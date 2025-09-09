@@ -1,0 +1,4 @@
+inference:
+  checkpoint: outputs/checkpoint_best.pth
+  topk: 1
+  temperature: 1.0

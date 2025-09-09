@@ -1,0 +1,7 @@
+train:
+  batch_size: 16
+  epochs: 10
+  lr: 3.0e-4
+loss:
+  lambda_boundary: 1.0
+  lambda_vq: 1.0
