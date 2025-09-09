@@ -1,3 +1,54 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "action-chunk-prediction"
+version = "0.1.0"
+description = "A research framework for Action Chunk Prediction (ACP) to improve multi-step robot behavior learning using chunked action sequences."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Yuan-Fu Yang", email = "yuanfuyang@nycu.edu.tw" }
+]
+maintainers = [
+    { name = "Yuan-Fu Yang", email = "yuanfuyang@nycu.edu.tw" }
+]
+keywords = ["robotics", "action chunking", "VLA", "MoE", "manipulation", "ACP"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
+
+requires-python = ">=3.9"
+
+dependencies = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "numpy",
+    "pyyaml",
+    "tqdm",
+    "scikit-learn",
+    "matplotlib",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/Action-Chunk-Prediction"
+Issues = "https://github.com/your-org/Action-Chunk-Prediction/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["acp*"]
+exclude = ["tests*", "examples*"]
+
+[tool.setuptools]
+package-dir = { "" = "." }
+
+[tool.setuptools.data-files]
+"configs" = ["configs/*.yaml"]
+"examples" = ["examples/**/*"]
+"docs" = ["docs/*"]
