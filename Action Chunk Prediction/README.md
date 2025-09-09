@@ -1,50 +1,166 @@
-# Action Chunk Prediction
+# Action Chunk Prediction (ACP)
 
-**目的**：提升機器人對多步行為的序列學習能力，改善傳統逐步預測的效率。  
-**目標**：設計 **Action Chunk Prediction (ACP)** 框架，參考 **FAST** 與 **VQ Action Chunking**，建立初版架構與程式。
+**Goal**: Improve a robot’s ability to learn **multi-step behaviors** by predicting **action chunks** instead of step-by-step actions.  
+**Objective**: Design an **Action Chunk Prediction** framework. We **reference FAST** (chunk boundary & aggregation) and **Vector-Quantized (VQ) Action Chunking** to build the initial architecture and codebase.
 
-> ⚠️ 中間會用到 VLA 模型，**務必使用既有的 `VLA-MoE-Manipulation` 專案**（本庫不會另外實作 VLA）。
-> 由 `acp/integration/vla_moe_bridge.py` 統一呼叫。
+> **Important**: This project **uses your existing `VLA-MoE-Manipulation`** repository for low-level action inference. **Do not** re-implement VLA here. All interactions go through `acp/integration/vla_moe_bridge.py`.
 
-## 特色
-- 時序編碼（Transformer/TCN）→ **邊界偵測（FAST-style）**
-- 片段聚合（segment pooling）→ **VQ 碼本量化**（可選）
-- 支援單層或 **CL3（3層級）** 分塊（atomic→micro→macro）
-- 與 **VLA-MoE-Manipulation** 串接：由 VLA 產出低階連續動作，再由 ACP 進行分塊與序列重建
+---
 
-## 快速開始
-```bash
-# 1) 取得/更新 VLA 子模組
-bash scripts/prepare_submodule.sh  # 需 git 可連外
+## 🔧 What ACP Does
+- Encodes an action sequence with a temporal backbone (Transformer or TCN).  
+- Predicts **chunk boundaries** (FAST-style boundary detection).  
+- Aggregates segments into **chunk embeddings** (segment-mean pooling).  
+- Optionally **quantizes** chunk embeddings into discrete **VQ codes** (codebook).  
+- (Optional) **CL3** hierarchical chunking: **atomic → micro-chunk → macro-chunk**.
 
-# 2) 安裝依賴（建議 venv）
-pip install -r requirements.txt
-pip install -e .
+ACP focuses on **efficient sequence learning** and **long-horizon behavior** by operating at chunk level.
 
-# 3) 預處理序列（將 demonstrations 轉成可學資料）
-python scripts/preprocess_sequences.py --input examples/manipulation/sequences/demo_seq_01.json     --output data/processed/train_sequences.pt
+---
 
-# 4) 訓練
-bash scripts/train_acp.sh
-
-# 5) 推論（輸出 chunk 邊界與索引）
-bash scripts/infer_acp.sh "pick up the red block"
-
-# 6) 視覺化
-python -m acp.inference.visualize --input outputs/last_infer.json --save outputs/vis_chunks.png
-```
-
-## 專案結構
+## 📦 Repository Structure
 ```
 Action-Chunk-Prediction/
-├─ configs/                 # 模型與訓練/推論組態
-├─ acp/                     # 主程式套件（模型/資料/訓練/推論/工具）
-├─ scripts/                 # 預處理/訓練/推論/評估/子模組
-├─ docs/                    # 設計/資料格式/評估/整合說明
-├─ examples/manipulation/   # Manipulation 示範資料
-├─ data/                    # 預設資料夾（raw/processed/cache）
-└─ third_party/VLA-MoE-Manipulation/  # ★ 子模組（請用你既有的 VLA 專案）
+├─ configs/                 # Model / training / inference configurations
+├─ acp/
+│  ├─ integration/          # Bridge to VLA-MoE-Manipulation (no re-implementation)
+│  ├─ models/               # Temporal encoder, boundary detector, VQ, FAST aggregator
+│  ├─ data/                 # Dataset loader / collate
+│  ├─ training/             # Trainer, train loop
+│  ├─ inference/            # Inference, decode, visualization
+│  └─ utils/                # Logger, checkpoint, seed, config
+├─ scripts/                 # Preprocess / train / infer / eval / submodule helper
+├─ docs/                    # DESIGN / DATA_FORMAT / EVALUATION / INTEGRATION
+├─ examples/manipulation/   # Manipulation demo sequences and commands
+├─ data/                    # Default data folders (raw/processed/cache)
+└─ third_party/
+   └─ VLA-MoE-Manipulation/ # Your existing VLA repo (git submodule or manual clone)
 ```
 
-## 授權
-本專案採用 **Apache License 2.0**。
+---
+
+## 🚀 Quickstart (Linux / Omniverse-friendly)
+
+### 0) (Once) Place your VLA repo
+```bash
+# Option A: manual
+mkdir -p third_party
+git clone <YOUR_VLA_MOE_REPO_URL> third_party/VLA-MoE-Manipulation
+
+# Option B: helper script (prints instructions)
+bash scripts/prepare_submodule.sh
+```
+
+### 1) Environment
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -e .
+```
+
+### 2) Manipulation Example (included in this repo)
+We provide a tiny toy sequence under `examples/manipulation/sequences/demo_seq_01.json` (7D actions over time).  
+You can convert it into a learnable tensor dataset, train ACP, then infer and visualize boundaries.
+
+```bash
+# Convert JSON -> torch tensors (.pt)
+python scripts/preprocess_sequences.py   --input examples/manipulation/sequences/demo_seq_01.json   --output data/processed/train_sequences.pt
+
+# Train ACP (boundary + optional VQ)
+bash scripts/train_acp.sh
+
+# Run inference (predict chunk boundaries + VQ indices) and visualize
+bash scripts/infer_acp.sh
+bash scripts/eval_acp.sh  # creates outputs/vis_chunks.png
+```
+
+> **Note**: For real use, export multi-step trajectories from your **VLA-MoE-Manipulation** inference and convert them to the same JSON format. ACP only handles chunking and sequence modeling.
+
+---
+
+## 🗂️ Data Format
+
+**Input JSON** (`examples/manipulation/sequences/demo_seq_01.json`):
+```json
+{
+  "actions": [
+    [0.0, 0.0, 0.01, 0, 0, 0, 0],
+    [0.0, 0.0, 0.01, 0, 0, 0, 0],
+    "... continued ..."
+  ]
+}
+```
+- `actions`: `T × 7` continuous low-level actions (e.g., `[dx, dy, dz, droll, dpitch, dyaw, gripper]`).  
+- ACP’s `scripts/preprocess_sequences.py` will create a toy boundary label (periodic, for demo) and save a `.pt` file containing:
+  - `seqs`: `[N, T, D]` float tensor
+  - `boundaries`: `[N, T]` binary tensor
+
+**Run preprocessing**
+```bash
+python scripts/preprocess_sequences.py   --input examples/manipulation/sequences/demo_seq_01.json   --output data/processed/train_sequences.pt
+```
+
+---
+
+## ⚙️ Configuration
+- `configs/model_acp.yaml`: model size, use_vq, codebook size, boundary threshold  
+- `configs/train.yaml`: batch size, epochs, learning rate, loss weights  
+- `configs/inference.yaml`: checkpoint path, decoding parameters  
+
+Example (abridged):
+```yaml
+model:
+  name: ActionChunkPredictor
+  d_model: 256
+  use_vq: true
+  codebook_size: 128
+  boundary_threshold: 0.5
+encoder:
+  type: transformer
+  depth: 4
+  heads: 4
+  dropout: 0.1
+training:
+  batch_size: 16
+  epochs: 10
+  lr: 3.0e-4
+```
+
+---
+
+## 🧠 Architecture (ACP core)
+1. **Temporal Encoder** (Transformer): encodes `[B, T, D]` sequences → contextualized features.  
+2. **Boundary Detector** (FAST-style head): predicts logits `[B, T]` for chunk **end** positions.  
+3. **FAST Aggregation**: segment-mean pooling → chunk embeddings `[B, N, D]`.  
+4. **VQ (optional)**: discretize embeddings into code indices (straight-through estimator).  
+5. **(Optional) CL3**: see `acp/models/hierarchical_chunker.py` for 3-level boundaries and VQ.
+
+We **do not** implement a VLA model here. When you need to **decode or simulate** long action sequences, use `acp/integration/vla_moe_bridge.py` to call your existing **VLA-MoE-Manipulation**.
+
+---
+
+## 📊 Evaluation
+- **Boundary quality**: visualize probability curves; compute BCE during training.  
+- **Reconstruction** (if applied): measure MSE/RMSE/MAE vs. original actions after decoding.  
+- **Chunk statistics**: code usage, average chunk length, top-k distribution.
+
+Run the toy visualization:
+```bash
+bash scripts/infer_acp.sh
+bash scripts/eval_acp.sh  # generates outputs/vis_chunks.png
+```
+
+---
+
+## 🧩 Integrating with VLA-MoE-Manipulation
+- Place your existing **VLA-MoE-Manipulation** under `third_party/`.  
+- Use the bridge `acp/integration/vla_moe_bridge.py` to import its `InferenceSession`.  
+- All low-level action inference must come from that repo. **Do not** re-implement VLA here.
+
+---
+
+## 🪪 License
+This repository is released under the **Apache License 2.0**. See `LICENSE`.
+
