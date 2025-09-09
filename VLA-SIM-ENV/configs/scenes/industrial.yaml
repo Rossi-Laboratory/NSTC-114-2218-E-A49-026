@@ -1,0 +1,24 @@
+name: industrial_cell
+floor:
+  type: plane
+  material: epoxy
+objects:
+  - name: pallet
+    type: rigid
+    asset: usd://industrial/pallet.usd
+    pose: [0.8, 0.0, 0.0, 0, 0, 0, 1]
+    physical: { mass: 15.0, friction: 0.8 }
+  - name: box
+    type: rigid
+    asset: usd://industrial/box.usd
+    pose: [0.8, 0.0, 0.15, 0, 0, 0, 1]
+    physical: { mass: 2.0, friction: 0.6 }
+robots:
+  - name: arm_cell
+    type: manipulator
+    asset: usd://robots/arm.usd
+    base_pose: [0.0, -0.8, 0.0, 0, 0, 0, 1]
+goals:
+  - type: pick_and_place
+    object: box
+    target_pose: [0.2, 0.6, 0.15, 0, 0, 0, 1]

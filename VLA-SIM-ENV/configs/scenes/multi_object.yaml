@@ -1,0 +1,38 @@
+name: multi_object_arena
+floor:
+  type: plane
+  material: concrete
+objects:
+  - name: cube_A
+    type: rigid
+    asset: usd://prims/cube.usd
+    pose: [0.5, 0.0, 0.05, 0, 0, 0, 1]
+    physical:
+      mass: 1.0
+      friction: 0.6
+  - name: cylinder_B
+    type: rigid
+    asset: usd://prims/cylinder.usd
+    pose: [0.2, -0.4, 0.05, 0, 0, 0, 1]
+    physical:
+      mass: 0.8
+      friction: 0.5
+  - name: bin_C
+    type: rigid
+    asset: usd://assets/bin.usd
+    pose: [-0.3, 0.3, 0.0, 0, 0, 0, 1]
+    physical:
+      mass: 5.0
+      friction: 0.9
+robots:
+  - name: arm_1
+    type: manipulator
+    asset: usd://robots/arm.usd
+    base_pose: [0.0, -0.8, 0.0, 0, 0, 0, 1]
+goals:
+  - type: place_in_container
+    object: cube_A
+    target: bin_C
+randomization:
+  object_poses: true
+  friction_range: [0.3, 0.9]

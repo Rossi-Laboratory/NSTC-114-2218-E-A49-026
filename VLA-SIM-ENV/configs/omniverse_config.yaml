@@ -1,0 +1,15 @@
+simulator: omniverse
+headless: true
+physics:
+  dt: 0.01
+  gravity: [0, 0, -9.81]
+render:
+  enabled: false
+  width: 1280
+  height: 720
+assets:
+  search_paths:
+    - ./assets/usd
+    - ./assets/urdf
+logging:
+  level: INFO

@@ -1,0 +1,12 @@
+simulator: genesis
+headless: true
+physics:
+  dt: 0.005
+  gravity: [0, 0, -9.81]
+render:
+  enabled: false
+assets:
+  search_paths:
+    - ./assets/genesis
+logging:
+  level: INFO
